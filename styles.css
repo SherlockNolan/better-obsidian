@@ -1,3 +1,13 @@
+/* Break only detected technical strings. Normal English and paragraph alignment
+ * remain under the theme's control. WBR supplies preferred boundaries; anywhere
+ * is the emergency fallback for a segment wider than the whole viewport. */
+body.better-obsidian-smart-wrap .better-obsidian-technical-text {
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
 /* Keep code scrolling inside the frame on every theme. */
 body.better-obsidian-code-enabled .markdown-rendered pre {
   max-width: 100%;

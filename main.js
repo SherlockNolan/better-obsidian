@@ -467,7 +467,8 @@ var require_settings = __commonJS({
       compactHtmlPasteEnabled: true,
       navigationHistoryEnabled: true,
       navigationHistoryPersist: true,
-      navigationHistoryLimit: 100
+      navigationHistoryLimit: 100,
+      smartWrapEnabled: true
     };
     var LEGACY_SETTINGS = {
       "vscode-theme@@vscode-code-wrap": "codeWrapEnabled",
@@ -510,6 +511,8 @@ var require_settings = __commonJS({
       }
       display() {
         this.containerEl.empty();
+        new Setting(this.containerEl).setName("\u6B63\u6587\u6392\u7248").setHeading();
+        this.toggle("\u8DEF\u5F84\u4E0E URL \u667A\u80FD\u65AD\u884C", "\u5728\u9605\u8BFB\u89C6\u56FE\u548C\u5B9E\u65F6\u9884\u89C8\u4E2D\uFF0C\u4E3A\u8DEF\u5F84\u3001URL \u548C\u957F\u6807\u8BC6\u7B26\u63D0\u4F9B\u5206\u9694\u7B26\u65AD\u884C\u70B9\uFF1B\u8D85\u957F\u7247\u6BB5\u5141\u8BB8\u7EE7\u7EED\u62C6\u5206\uFF0C\u666E\u901A\u82F1\u6587\u5355\u8BCD\u4FDD\u6301\u539F\u6709\u89C4\u5219\u3002\u4EC5\u5F71\u54CD\u663E\u793A\uFF0C\u4E0D\u63D2\u5165\u96F6\u5BBD\u5B57\u7B26\uFF0C\u4E0D\u6539\u53D8\u94FE\u63A5\u6216\u4EE3\u7801\u5757\u3002\u4E24\u7AEF\u5BF9\u9F50\u4ECD\u7531\u4E3B\u9898\u63A7\u5236\u3002\u9ED8\u8BA4\u5F00\u542F\u3002", "smartWrapEnabled");
         new Setting(this.containerEl).setName("\u5BFC\u822A\u5386\u53F2").setHeading();
         this.toggle("\u7B14\u8BB0\u5185\u4F4D\u7F6E\u524D\u8FDB\uFF0F\u540E\u9000", "\u8BB0\u5F55\u6807\u9898\uFF0F\u5757\u94FE\u63A5\u3001\u5927\u7EB2\u3001\u641C\u7D22\u3001\u70B9\u51FB\u7F16\u8F91\u884C\u548C\u8F83\u5927\u7684\u5149\u6807\u6216\u6EDA\u52A8\u8DF3\u8F6C\u3002\u76F4\u63A5\u4F7F\u7528\u9876\u90E8\u7BAD\u5934\u53CA\u539F\u751F Navigate back\uFF0Fforward \u547D\u4EE4\u4E0E\u5FEB\u6377\u952E\uFF0C\u65E0\u9700\u5355\u72EC\u7ED1\u5B9A\u63D2\u4EF6\u547D\u4EE4\u3002\u6BCF\u4E2A\u6807\u7B7E\u9875\u5206\u522B\u8BB0\u5F55\uFF0C\u9ED8\u8BA4\u5F00\u542F\u3002", "navigationHistoryEnabled");
         this.toggle("\u91CD\u542F\u540E\u4FDD\u7559\u5BFC\u822A\u5386\u53F2", "\u4FDD\u5B58\u6BCF\u4E2A\u6807\u7B7E\u9875\u7684\u7B14\u8BB0\u8DEF\u5F84\u3001\u5149\u6807\u548C\u6EDA\u52A8\u4F4D\u7F6E\uFF0C\u4E0D\u4FDD\u5B58\u7B14\u8BB0\u6B63\u6587\u3002\u9ED8\u8BA4\u5F00\u542F\u3002", "navigationHistoryPersist");
@@ -1174,6 +1177,177 @@ var require_navigation_history = __commonJS({
   }
 });
 
+// src/technical-text.js
+var require_technical_text = __commonJS({
+  "src/technical-text.js"(exports2, module2) {
+    var TOKENS = /(?:[a-z][a-z\d+.-]*:\/\/|www\.|[A-Za-z]:[\\/]|\\\\|(?:~|\.{1,2})[\\/]|\/)[^\s<>"'`，。；：！？、（）【】《》]+|[A-Za-z\d_.~-]+(?:\/[A-Za-z\d_.~!$%&+;=@-]+)+|[A-Za-z_][A-Za-z\d_]{23,}/giu;
+    function technicalTokens(text) {
+      const result = [];
+      for (const match of text.matchAll(TOKENS)) {
+        let value = match[0].replace(/[.,;:!?]+$/, "");
+        for (const [open, close] of [["(", ")"], ["[", "]"], ["{", "}"]]) {
+          while (value.endsWith(close) && value.split(close).length > value.split(open).length) value = value.slice(0, -1);
+        }
+        if (value.length < 8) continue;
+        const path = /[\\/]/.test(value) || /^www\./i.test(value);
+        if (!path && !/_|[a-z\d][A-Z]/.test(value)) continue;
+        const prefix = value.match(/^(?:[a-z][a-z\d+.-]*:\/\/|[A-Za-z]:[\\/]|\\\\|[~.]?[\\/])/i)?.[0].length || 0;
+        const encoded = /* @__PURE__ */ new Set();
+        for (const escape of value.matchAll(/%[a-f\d]{2}/gi)) {
+          encoded.add(escape.index + 1);
+          encoded.add(escape.index + 2);
+        }
+        const breaks = [];
+        for (let i = Math.max(1, prefix); i < value.length - 1; i++) {
+          if (encoded.has(i + 1)) continue;
+          const current = value[i], next = value[i + 1];
+          if (/[\\/_?&#=\-]/.test(current) && !/[\\/_?&#=\-]/.test(next)) breaks.push(i + 1);
+          else if (/[a-z\d]/.test(current) && /[A-Z]/.test(next)) breaks.push(i + 1);
+        }
+        result.push({ from: match.index, to: match.index + value.length, text: value, breaks });
+      }
+      return result;
+    }
+    module2.exports = { technicalTokens };
+  }
+});
+
+// src/smart-wrap.js
+var require_smart_wrap = __commonJS({
+  "src/smart-wrap.js"(exports2, module2) {
+    var { editorLivePreviewField } = require("obsidian");
+    var { Decoration, EditorView: EditorView2, ViewPlugin, WidgetType } = require("@codemirror/view");
+    var { syntaxTree } = require("@codemirror/language");
+    var { technicalTokens } = require_technical_text();
+    var { inCodeBlock } = require_html_paste();
+    var TOKEN_CLASS = "better-obsidian-technical-text";
+    var BODY_CLASS = "better-obsidian-smart-wrap";
+    var EXCLUDE = "pre, script, style, textarea, input, svg, math, mjx-container, .math, .math-inline, .math-block, .katex, .mermaid, .metadata-container, .frontmatter, [contenteditable], ." + TOKEN_CLASS;
+    var BreakOpportunity = class extends WidgetType {
+      eq() {
+        return true;
+      }
+      toDOM(view) {
+        const element = view.dom.ownerDocument.createElement("wbr");
+        element.className = "better-obsidian-word-break";
+        element.setAttribute("aria-hidden", "true");
+        return element;
+      }
+    };
+    function editorExtension() {
+      const breakWidget = new BreakOpportunity();
+      function build(view) {
+        if (!view.state.field(editorLivePreviewField, false)) return Decoration.none;
+        const decorations = [], visited = /* @__PURE__ */ new Set();
+        const tree = syntaxTree(view.state);
+        for (const range of view.visibleRanges) {
+          const first = view.state.doc.lineAt(range.from).number;
+          const last = view.state.doc.lineAt(range.to).number;
+          for (let n = first; n <= last; n++) {
+            if (visited.has(n)) continue;
+            visited.add(n);
+            const line = view.state.doc.line(n);
+            for (const token of technicalTokens(line.text)) {
+              const from = line.from + token.from, to = line.from + token.to;
+              let excluded = false, possibleCode = false;
+              for (let node = tree.resolveInner(from, 1); node; node = node.parent) {
+                if (/frontmatter|math|HTMLBlock|Comment/i.test(node.name)) {
+                  excluded = true;
+                  break;
+                }
+                if (/code|quote/i.test(node.name)) possibleCode = true;
+              }
+              if (excluded || possibleCode && inCodeBlock(view.state, from)) continue;
+              decorations.push(Decoration.mark({ class: TOKEN_CLASS }).range(from, to));
+              for (const offset of token.breaks) decorations.push(
+                Decoration.widget({ widget: breakWidget, side: 1 }).range(from + offset)
+              );
+            }
+          }
+        }
+        return Decoration.set(decorations, true);
+      }
+      return ViewPlugin.fromClass(class {
+        constructor(view) {
+          this.decorations = build(view);
+        }
+        update(update) {
+          if (update.docChanged || update.viewportChanged || syntaxTree(update.state) !== syntaxTree(update.startState) || update.state.field(editorLivePreviewField, false) !== update.startState.field(editorLivePreviewField, false)) {
+            this.decorations = build(update.view);
+          }
+        }
+      }, { decorations: (plugin) => plugin.decorations });
+    }
+    function prepareText(root) {
+      const document2 = root.ownerDocument;
+      if (!document2 || root.closest(EXCLUDE)) return;
+      const walker = document2.createTreeWalker(
+        root,
+        4
+        /* SHOW_TEXT */
+      );
+      const nodes = [];
+      let node;
+      while (node = walker.nextNode()) if (!node.parentElement?.closest(EXCLUDE)) nodes.push(node);
+      for (const textNode of nodes) {
+        const tokens = technicalTokens(textNode.data);
+        if (!tokens.length) continue;
+        const fragment = document2.createDocumentFragment();
+        let offset = 0;
+        for (const token of tokens) {
+          if (token.from > offset) fragment.append(document2.createTextNode(textNode.data.slice(offset, token.from)));
+          const span = document2.createElement("span");
+          span.className = TOKEN_CLASS;
+          span.dataset.betterObsidianWrap = "true";
+          let start = 0;
+          for (const end of token.breaks) {
+            span.append(document2.createTextNode(token.text.slice(start, end)), document2.createElement("wbr"));
+            start = end;
+          }
+          span.append(document2.createTextNode(token.text.slice(start)));
+          fragment.append(span);
+          offset = token.to;
+        }
+        if (offset < textNode.data.length) fragment.append(document2.createTextNode(textNode.data.slice(offset)));
+        textNode.replaceWith(fragment);
+      }
+    }
+    function restoreText(root) {
+      for (const span of root.querySelectorAll('[data-better-obsidian-wrap="true"]')) {
+        span.replaceWith(span.ownerDocument.createTextNode(span.textContent));
+      }
+    }
+    var SmartWrap2 = class {
+      constructor(plugin) {
+        this.plugin = plugin;
+        this.extension = editorExtension();
+        plugin.registerMarkdownPostProcessor((element) => {
+          if (plugin.active && plugin.settings.smartWrapEnabled) prepareText(element);
+        }, 210);
+      }
+      attachWindow(win) {
+        win.document.body.classList.toggle(BODY_CLASS, this.plugin.settings.smartWrapEnabled);
+      }
+      detachWindow(win) {
+        win.document.body.classList.remove(BODY_CLASS);
+        for (const root of win.document.querySelectorAll(".markdown-rendered")) restoreText(root);
+      }
+      apply() {
+        for (const win of this.plugin.windowCleanups.keys()) {
+          this.attachWindow(win);
+          for (const root of win.document.querySelectorAll(".markdown-rendered:not(.cm-content)")) {
+            if (this.plugin.settings.smartWrapEnabled) prepareText(root);
+            else restoreText(root);
+          }
+        }
+        this.plugin.refreshEditorExtensions();
+        this.plugin.app.workspace.trigger("post-processor-change");
+      }
+    };
+    module2.exports = { SmartWrap: SmartWrap2, editorExtension, prepareText, restoreText };
+  }
+});
+
 // src/main.js
 var { Plugin } = require("obsidian");
 var { EditorView } = require("@codemirror/view");
@@ -1182,6 +1356,7 @@ var { loadSettings, BetterObsidianSettings } = require_settings();
 var { convertLatexSyntax, installLatexCopy } = require_latex_copy();
 var { installPaste, installCodePaste } = require_html_paste();
 var { NavigationHistory } = require_navigation_history();
+var { SmartWrap } = require_smart_wrap();
 module.exports = class BetterObsidian extends Plugin {
   async onload() {
     this.active = true;
@@ -1189,6 +1364,7 @@ module.exports = class BetterObsidian extends Plugin {
     this.windowCleanups = /* @__PURE__ */ new Map();
     this.convertedCopyEvents = /* @__PURE__ */ new WeakSet();
     this.editorExtensions = [];
+    this.smartWrap = new SmartWrap(this);
     this.navigationHistory = new NavigationHistory(this);
     await this.navigationHistory.load();
     this.codeBlocks = new CodeBlocks(this);
@@ -1207,6 +1383,7 @@ module.exports = class BetterObsidian extends Plugin {
     this.registerEvent(this.app.workspace.on("window-open", (_, win) => this.attachWindow(win)));
     this.registerEvent(this.app.workspace.on("window-close", (_, win) => this.detachWindow(win)));
     this.codeBlocks.apply();
+    this.smartWrap.apply();
     this.addCommand({
       id: "convert-latex-to-mathjax",
       name: "\u8F6C\u6362\u5F53\u524D\u7B14\u8BB0\u7684 LaTeX \u5206\u9694\u7B26",
@@ -1229,12 +1406,14 @@ module.exports = class BetterObsidian extends Plugin {
     });
     this.codeBlocks.attachWindow(win);
     this.navigationHistory.attachWindow(win);
+    this.smartWrap.attachWindow(win);
   }
   detachWindow(win) {
     this.windowCleanups.get(win)?.();
     this.windowCleanups.delete(win);
     this.codeBlocks.detachWindow(win);
     this.navigationHistory.detachWindow(win);
+    this.smartWrap.detachWindow(win);
   }
   refreshEditorExtensions() {
     this.editorExtensions.splice(
@@ -1243,6 +1422,7 @@ module.exports = class BetterObsidian extends Plugin {
       this.copyExtension,
       this.pasteExtension,
       this.navigationHistory.extension,
+      ...this.settings.smartWrapEnabled ? [this.smartWrap.extension] : [],
       ...this.settings.codeScrollEnabled ? this.codeBlocks.extensions : []
     );
     this.app.workspace.updateOptions();
@@ -1252,6 +1432,7 @@ module.exports = class BetterObsidian extends Plugin {
     await this.saveData(this.settings);
     if (["codeScrollEnabled", "codeWrapEnabled", "codeLineNumbersEnabled"].includes(key)) this.codeBlocks.apply();
     if (key.startsWith("navigationHistory")) this.navigationHistory.apply();
+    if (key === "smartWrapEnabled") this.smartWrap.apply();
   }
   onunload() {
     this.navigationHistory?.unload();

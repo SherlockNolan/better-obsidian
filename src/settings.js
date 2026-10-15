@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = {
   navigationHistoryEnabled: true,
   navigationHistoryPersist: true,
   navigationHistoryLimit: 100,
+  smartWrapEnabled: true,
 };
 
 const LEGACY_SETTINGS = {
@@ -59,6 +60,8 @@ class BetterObsidianSettings extends PluginSettingTab {
 
   display() {
     this.containerEl.empty();
+    new Setting(this.containerEl).setName("正文排版").setHeading();
+    this.toggle("路径与 URL 智能断行", "在阅读视图和实时预览中，为路径、URL 和长标识符提供分隔符断行点；超长片段允许继续拆分，普通英文单词保持原有规则。仅影响显示，不插入零宽字符，不改变链接或代码块。两端对齐仍由主题控制。默认开启。", "smartWrapEnabled");
     new Setting(this.containerEl).setName("导航历史").setHeading();
     this.toggle("笔记内位置前进／后退", "记录标题／块链接、大纲、搜索、点击编辑行和较大的光标或滚动跳转。直接使用顶部箭头及原生 Navigate back／forward 命令与快捷键，无需单独绑定插件命令。每个标签页分别记录，默认开启。", "navigationHistoryEnabled");
     this.toggle("重启后保留导航历史", "保存每个标签页的笔记路径、光标和滚动位置，不保存笔记正文。默认开启。", "navigationHistoryPersist");

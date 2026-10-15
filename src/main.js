@@ -5,6 +5,7 @@ const { loadSettings, BetterObsidianSettings } = require("./settings");
 const { convertLatexSyntax, installLatexCopy } = require("./latex-copy");
 const { installPaste, installCodePaste } = require("./html-paste");
 const { NavigationHistory } = require("./navigation-history");
+const { SmartWrap } = require("./smart-wrap");
 
 module.exports = class BetterObsidian extends Plugin {
   async onload() {
@@ -13,6 +14,7 @@ module.exports = class BetterObsidian extends Plugin {
     this.windowCleanups = new Map();
     this.convertedCopyEvents = new WeakSet();
     this.editorExtensions = [];
+    this.smartWrap = new SmartWrap(this);
     this.navigationHistory = new NavigationHistory(this);
     await this.navigationHistory.load();
     this.codeBlocks = new CodeBlocks(this);
@@ -34,6 +36,7 @@ module.exports = class BetterObsidian extends Plugin {
     this.registerEvent(this.app.workspace.on("window-open", (_, win) => this.attachWindow(win)));
     this.registerEvent(this.app.workspace.on("window-close", (_, win) => this.detachWindow(win)));
     this.codeBlocks.apply();
+    this.smartWrap.apply();
 
     // Preserve the original plugin's explicit whole-note conversion command.
     this.addCommand({
@@ -56,6 +59,7 @@ module.exports = class BetterObsidian extends Plugin {
     this.windowCleanups.set(win, () => { pasteCleanup(); copyCleanup(); });
     this.codeBlocks.attachWindow(win);
     this.navigationHistory.attachWindow(win);
+    this.smartWrap.attachWindow(win);
   }
 
   detachWindow(win) {
@@ -63,11 +67,13 @@ module.exports = class BetterObsidian extends Plugin {
     this.windowCleanups.delete(win);
     this.codeBlocks.detachWindow(win);
     this.navigationHistory.detachWindow(win);
+    this.smartWrap.detachWindow(win);
   }
 
   refreshEditorExtensions() {
     this.editorExtensions.splice(0, this.editorExtensions.length, this.copyExtension, this.pasteExtension,
       this.navigationHistory.extension,
+      ...(this.settings.smartWrapEnabled ? [this.smartWrap.extension] : []),
       ...(this.settings.codeScrollEnabled ? this.codeBlocks.extensions : []));
     // Obsidian's supported mechanism for updating a mutable extension array.
     this.app.workspace.updateOptions();
@@ -78,6 +84,7 @@ module.exports = class BetterObsidian extends Plugin {
     await this.saveData(this.settings);
     if (["codeScrollEnabled", "codeWrapEnabled", "codeLineNumbersEnabled"].includes(key)) this.codeBlocks.apply();
     if (key.startsWith("navigationHistory")) this.navigationHistory.apply();
+    if (key === "smartWrapEnabled") this.smartWrap.apply();
   }
 
   onunload() {

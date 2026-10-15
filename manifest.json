@@ -3,7 +3,7 @@
   "name": "Better Obsidian",
   "version": "1.1.0",
   "minAppVersion": "1.0.0",
-  "description": "Optional code-block enhancements, LaTeX copy/paste conversion and compact HTML list pasting.",
+  "description": "Code-block enhancements, smart technical-text wrapping, navigation history and clipboard/paste utilities.",
   "author": "Local",
   "isDesktopOnly": false
 }

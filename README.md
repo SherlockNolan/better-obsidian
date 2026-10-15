@@ -1,6 +1,12 @@
 # Better Obsidian
 
-Local Obsidian plugin combining optional features. Open **Settings → Better Obsidian** to configure code blocks and clipboard/paste behavior. Code enhancements, LaTeX conversion and list cleanup default to on; code wrapping and line numbers default to off. Changes take effect immediately.
+Local Obsidian plugin combining optional features. Open **Settings → Better Obsidian** to configure prose wrapping, navigation history, code blocks and clipboard/paste behavior. Smart prose wrapping, code enhancements, LaTeX conversion and list cleanup default to on; code wrapping and line numbers default to off. Changes take effect immediately.
+
+## Smart wrapping for paths and URLs
+
+**Settings → Better Obsidian → 正文排版 → 路径与 URL 智能断行** is enabled by default. Reading view and Live Preview gain display-only break opportunities at directory separators, URL query separators and boundaries in long technical identifiers (underscores, hyphens and camel-case boundaries). If a single component is wider than the whole line, it may break within that component. URL schemes, percent escapes and ordinary English words are preserved. Inline-code paths can wrap; fenced/indented code blocks, math and frontmatter keep their existing behavior. Source mode retains native Markdown layout.
+
+Paragraph alignment remains controlled by the theme, including its two-sided justification switch. This feature adds no characters to the note: Reading view uses removable spans and `<wbr>`, while Live Preview uses editable CodeMirror marks and zero-length widgets. The Markdown source, copied plain text and link destinations stay unchanged. Existing rendered content and editor decorations update immediately when toggled; disabling or unloading removes the generated markup. Popout windows and processed PDF output use the same rules.
 
 ## Code blocks (`code-scroll`)
 
@@ -54,6 +60,8 @@ Source ownership:
 - `src/code-scroll.js`: CodeMirror scrolling, Prism classification and source-line wrappers.
 - `src/latex-copy.js`: copy conversion and clipboard backends.
 - `src/html-paste.js`: paste conversion and generated list-spacing cleanup.
+- `src/technical-text.js`: technical-token detection and preferred break boundaries.
+- `src/smart-wrap.js`: Reading-view markup and Live Preview decorations for smart wrapping.
 - `styles.css`: code-feature layout, gutters, wrap markers and print behavior.
 
 The bundled `main.js` is the entry point Obsidian loads.
@@ -61,6 +69,7 @@ The bundled `main.js` is the entry point Obsidian loads.
 ```sh
 npm ci
 npm run build
+npm test
 ```
 
 Obsidian and CodeMirror remain host-provided dependencies. Settings are stored in this plugin's `data.json`.
